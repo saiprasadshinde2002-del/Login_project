@@ -6,7 +6,8 @@ class UserBase(BaseModel):
     is_active: bool = True
     is_superuser: bool = False
 
-class UserCreate(UserBase):
+class UserCreate(BaseModel):
+    email: EmailStr
     password: str
 
 class UserUpdate(BaseModel):

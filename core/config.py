@@ -3,8 +3,8 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    database_url: str = "postgresql+psycopg://postgres:admin@localhost:5432/demo1"  # Provide a default or load from .env
-    jwt_secret: str = "c866b7b3"        # Provide a default or load from .env
+    database_url: str = "postgresql+psycopg://postgres:admin@localhost:5432/demo" 
+    jwt_secret: str = "fc8eeb6b"        
     jwt_alg: str = "HS256"
     access_token_expire_minutes: int = 30
     redis_url: str = "redis://localhost:6379/0"

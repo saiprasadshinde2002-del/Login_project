@@ -14,9 +14,9 @@ def create_access_token(sub: str) -> str:
     to_encode = {"sub": sub, 'exp': datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)}
     return jwt.encode(to_encode, settings.jwt_secret, algorithm=settings.jwt_alg)
 
-def decode_token(token: str) -> str | None:
+def decode_token(token: str) -> dict:
     try:
-        return jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_alg]).get("sub")
+        return jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_alg])
     except JWTError:
-        return None
+        raise HTTPException(status_code=401, detail="Invalid token")
     

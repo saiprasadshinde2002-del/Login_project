@@ -1,11 +1,12 @@
-import os
 from celery import Celery
-from core.config import settings
 
-celery_app = Celery(
-    "app",
-    broker=settings.redis_url,
-    backend=settings.redis_url,
+celery = Celery(
+    "worker",
+    broker="redis://localhost:6379/0",      # for local Redis; change as needed
+    backend="redis://localhost:6379/0"
 )
-celery_app.conf.task_acks_late = True
-celery_app.conf.result_expires = 3600
+celery.conf.update(
+    task_serializer='json',
+    accept_content=['json'],
+    result_serializer='json',
+)
