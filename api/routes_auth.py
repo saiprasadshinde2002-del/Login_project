@@ -6,17 +6,17 @@ from security.auth import hash_password, verify_password, create_access_token
 from api.deps import get_db
 from tasks.jobs import send_welcome_email
 
-
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-@router.post("/signup", response_model=UserOut, status_code=201)
-def signup(body: UserCreate, db: Session= Depends(get_db)):
+@router.post("/signup", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+def signup(body: UserCreate, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == body.email).first():
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
     user = User(
         email=body.email,
         full_name=body.full_name,
         hashed_password=hash_password(body.password),
+        is_admin=body.is_admin,
     )
     db.add(user)
     db.commit()
@@ -25,13 +25,11 @@ def signup(body: UserCreate, db: Session= Depends(get_db)):
     return user
 
 @router.post("/login", response_model=Token)
-def login(body: UserCreate, db: Session= Depends(get_db)):
-    user=db.query(User).filter(User.email==body.email).first()
-    if not user or not verify_password(body.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    token=create_access_token(sub=user.email)
+def login(body: UserCreate, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == body.email).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if not verify_password(body.password, user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    token = create_access_token(sub=user.email)
     return Token(access_token=token)
-
-
-
-

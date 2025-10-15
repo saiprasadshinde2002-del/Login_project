@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from api.deps import get_db, get_current_user
@@ -8,18 +8,19 @@ from security.auth import hash_password
 
 router = APIRouter(prefix="/users", tags=["users"])
 
-@router.get("/", response_model=List[UserOut])
+@router.get("/", response_model=List[UserOut], status_code=status.HTTP_200_OK)
 def list_users(db: Session = Depends(get_db), _=Depends(get_current_user)):
-    return db.query(User).all()
+    users = db.query(User).all()
+    return users
 
-@router.get("/{user_id}", response_model=UserOut)
+@router.get("/{user_id}", response_model=UserOut, status_code=status.HTTP_200_OK)
 def get_user(user_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
     user = db.get(User, user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="Not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return user
 
-@router.patch("/{user_id}", response_model=UserOut)
+@router.patch("/{user_id}", response_model=UserOut, status_code=status.HTTP_200_OK)
 def update_user(
     user_id: int,
     body: UserUpdate,
@@ -28,12 +29,11 @@ def update_user(
 ):
     user = db.get(User, user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    print(current_user.id, current_user.is_admin)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if not (current_user.id == user_id or getattr(current_user, "is_admin", False)):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
 
-
-    # Only allow if same user or admin
-    if current_user.id == user_id or current_user.is_admin:
+    try:
         if body.full_name is not None:
             user.full_name = body.full_name
         if body.password is not None:
@@ -43,12 +43,11 @@ def update_user(
         db.commit()
         db.refresh(user)
         return user
-    else:
-        raise HTTPException(status_code=403, detail="Not authorized")
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update user")
 
-    
-
-@router.delete("/{user_id}", status_code=204)
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
@@ -56,14 +55,14 @@ def delete_user(
 ):
     user = db.get(User, user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if not (current_user.id == user_id or getattr(current_user, "is_admin", False)):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
 
-    # Only allow if same user or admin
-    if current_user.id == user_id or current_user.is_admin:
+    try:
         db.delete(user)
         db.commit()
         return
-    else:
-        raise HTTPException(status_code=403, detail="Not authorized")
-
-    
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to delete user")
