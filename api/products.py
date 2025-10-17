@@ -5,6 +5,7 @@ from api.deps import get_db, get_current_user
 from models.product import Product
 from schemas.product import ProductCreate, ProductUpdate, ProductOut
 from models.user import User
+from tasks.jobs import send_product_added_email 
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -24,6 +25,17 @@ def create_product(
         db.add(db_product)
         db.commit()
         db.refresh(db_product)
+        if getattr(current_user, "email", None):
+            send_product_added_email.delay(
+                to_email=current_user.email,
+                product_name=db_product.name,
+                product_id=db_product.id,
+                product_description=db_product.description,
+                product_price=db_product.price,
+                product_quantity=db_product.quantity,
+                product_tags=db_product.tags
+
+            )
         return db_product
     except Exception:
         db.rollback()

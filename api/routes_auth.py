@@ -21,7 +21,8 @@ def signup(body: UserCreate, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
-    send_welcome_email.delay(user.email)
+    if user.email:
+            send_welcome_email.delay(user.email)
     return user
 
 @router.post("/login", response_model=Token)
